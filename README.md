@@ -11,31 +11,37 @@ back-end is produced; built on its own, all the standalone back-ends are.
 
 ## How it works
 
-`avendish/cmake/AvendishAddon.cmake` is the single entry point. It detects the build
-context and exposes three macros:
-
-| Context | Detection | Back-ends |
-|---|---|---|
-| `add_subdirectory` of score | `score_lib_base` is a target | ossia only |
-| standalone vs score SDK / source | `SCORE_SOURCE_DIR` / `SCORE_SDK` set → bootstraps it | ossia only |
-| pure Avendish | none of the above → `find_package(Avendish)` | Max/Pd/Python/TD/Godot/… |
+The addon has **no knowledge of the host**. It just asks for Avendish:
 
 ```cmake
-include(AvendishAddon)              # before project(); bootstraps the score SDK if asked
-project(score_addon_avnd_demo CXX)
+find_package(Avendish QUIET)        # use the host's Avendish (e.g. score) if present
+if(NOT Avendish_FOUND)              # otherwise fetch it
+  include(FetchContent)
+  FetchContent_Declare(Avendish GIT_REPOSITORY https://github.com/celtera/avendish GIT_TAG …)
+  FetchContent_Populate(Avendish)
+  list(APPEND CMAKE_PREFIX_PATH "${avendish_SOURCE_DIR}")
+  find_package(Avendish REQUIRED)
+endif()
 
 avnd_addon_init(NAME score_addon_avnd_demo)
-avnd_addon_object(
-  BASE score_addon_avnd_demo
-  C_NAME avnd_addon_demo
-  CLASS DemoProcessor
-  SOURCES src/Demo.hpp src/Demo.cpp)
+avnd_addon_object(BASE score_addon_avnd_demo C_NAME avnd_addon_demo CLASS DemoProcessor
+                  SOURCES src/Demo.hpp src/Demo.cpp)
 avnd_addon_finalize(NAME score_addon_avnd_demo UUID <uuid> VERSION 1.0.0)
 ```
 
-In a score build the macros forward to `avnd_score_plugin_init/add/finalize`; standalone
-they forward to `add_library` + `avnd_make_object`. The object in `src/Demo.hpp` is
-framework-agnostic (halp + `std` only) so it compiles in both.
+`find_package(Avendish)` (via `AvendishConfig.cmake`) is host-aware: when a host already
+provides the `avnd_*` commands (score puts its in-tree copy on the prefix path) it reuses
+them; otherwise it builds Avendish from the fetched sources. Either way it loads
+`AvendishAddon.cmake`, which detects the context and exposes the three `avnd_addon_*`
+macros:
+
+| Context | Detection | Back-ends |
+|---|---|---|
+| as / against ossia score | `avnd_score_plugin_add` exists | ossia only, via `avnd_score_plugin_*` |
+| pure Avendish | otherwise | Max/Pd/Python/TD/Godot/… via `avnd_make_object` |
+
+The object in `src/Demo.hpp` is framework-agnostic (halp + `std` only) so it compiles in
+both.
 
 ## Building
 
