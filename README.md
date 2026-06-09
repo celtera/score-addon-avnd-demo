@@ -43,6 +43,18 @@ macros:
 The object in `src/Demo.hpp` is framework-agnostic (halp + `std` only) so it compiles in
 both.
 
+## Two objects, two ways of choosing back-ends
+
+- `src/Demo.hpp` — a message object built with the default **preset** (`CATEGORY object`):
+  Max / Pd / Python / TD-CHOP / Godot / ossia.
+- `src/Geometry.hpp` — a mesh generator built with an **explicit back-end list**:
+  `BACKENDS ossia max:GEOMETRY touchdesigner:POP godot:GEOMETRY` — i.e. a TouchDesigner
+  **POP but not a SOP**, the Godot mesh node and the Max obj3d external. Each entry is
+  `<backend>[:<PROCESSOR_TYPE>]` and maps straight to `avnd_make_<backend>`.
+
+Use `CATEGORY` for a whole family at once, or `BACKENDS` for exact control. In a score
+build both are ignored — score introspects the object and builds only its ossia process.
+
 ## Building
 
 Standalone (downloads Avendish, builds every back-end whose SDK is present):
